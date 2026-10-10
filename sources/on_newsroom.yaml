@@ -1,0 +1,64 @@
+source_id: on_newsroom
+name: Ontario government news releases
+region_code: "on"
+data_type: event_text
+adapter: json_api
+update_frequency: 20m
+scheduled_release: false
+
+licence: >-
+  Ontario Crown copyright. The Open Government Licence, Ontario applies only to
+  material clearly labelled as carrying it, and news releases are not so
+  labelled. Commercial reuse of release text is not established.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-18. api.news.ontario.ca/robots.txt returns an empty Disallow,
+  so everything is permitted to crawlers. This is an undocumented backend behind
+  the public newsroom, recovered from the site's own JavaScript bundle, so it
+  can change without notice. Reproducing headlines and metadata is lower risk
+  than reproducing full release bodies; the engine stores the lead paragraph
+  only.
+signal_potential: >-
+  Mixed, and worth splitting. Press-conference advisories and appointment
+  notices are calendar noise. Genuine policy announcements, funding decisions
+  and emergency measures land here first and on no published schedule. Filtered
+  to energy and electricity terms so the noise half is discarded rather than
+  alerted on.
+
+request:
+  url: https://api.news.ontario.ca/api/v1/releases
+  method: GET
+  params:
+    language: en
+
+parse:
+  mode: events
+  records: "data"
+  id_field: id
+  title_field: clean_title
+  time_field: release_date_time
+  timezone: America/Toronto
+  summary_field: content_lead
+  url_template: "https://news.ontario.ca/en/release/{id}/{slug}"
+
+detectors:
+  - type: novelty
+    max_age_days: 3
+    confidence: 0.55
+    match_any:
+      - electricity
+      - energy
+      - hydro
+      - nuclear
+      - transmission
+      - "power system"
+      - "energy board"
+      - grid
+      - blackout
+      - "rate increase"
+      - moratorium
+      - "state of emergency"
+      - procurement
+    exclude:
+      - "media advisory"
+      - "photo opportunity"

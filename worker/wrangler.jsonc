@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "signal-arbitrage",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "observability": { "enabled": true },
+
+  // One trigger, not several. The free plan allows five per account, and the
+  // handler decides what a given minute is for, so spending more than one here
+  // buys nothing and takes budget from anything else on this account.
+  //
+  // Five minutes because that is the zonal price and real time totals
+  // publication tick, and a fifteen minute poll would throw away two intervals
+  // in three. The peak line still runs on the quarter hour: it is gated on the
+  // minute inside the handler, so its cost is unchanged.
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // Raw payloads, verbatim and uncompressed. The Mac pulls them down, gzips
+  // them into data/raw/ and runs the detectors there. See src/relay.js for why
+  // nothing is compressed on this side.
+  "r2_buckets": [
+    {
+      "binding": "RAW",
+      "bucket_name": "signal-arbitrage-raw"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "signal-arbitrage",
+      "database_id": "<your-d1-database-id>"
+    }
+  ],
+
+  // One address, and an unlisted one. Preview URLs would publish a second
+  // hostname for every deployment, and every route here quotes IESO values under
+  // a licence that is explicitly non-transferrable.
+  "workers_dev": true,
+  "preview_urls": false,
+
+  "vars": { "ENVIRONMENT": "production" }
+}

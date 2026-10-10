@@ -1,0 +1,84 @@
+source_id: on_ieso_zonal_price
+name: Ontario zonal energy price, real time
+region_code: "on"
+data_type: timeseries_numeric
+adapter: xml_feed
+update_frequency: 5m
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: a limited, non-exclusive, non-sublicensable,
+  non-transferrable licence to use and reproduce the content, conditional on
+  reproducing the IESO copyright and terms-of-use string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-18. reports-public.ieso.ca serves no robots.txt (404) and the
+  Terms of Use at ieso.ca/Terms-of-Use contain no anti-automation clause, so
+  fetching is permitted. Redistribution is NOT resolved: the licence is
+  explicitly non-sublicensable and non-transferrable, which is a direct problem
+  for reselling derived alerts. Internal use only until IESO grants written
+  permission.
+signal_potential: >-
+  The strongest source in the set and the reason this node exists. A real market
+  clearing price that moves on weather, forced outages and intertie flows, on no
+  calendar at all. Verified intra-hour: 108.14 falling to 74.11 across eight
+  five-minute intervals. A five-minute poll gets the data as fast as anyone
+  without a paid feed.
+
+request:
+  url: https://reports-public.ieso.ca/public/RealtimeOntarioZonalPrice/PUB_RealtimeOntarioZonalPrice.xml
+  method: GET
+
+parse:
+  mode: timeseries
+  timezone: EST
+  base_date_path: "d:DocBody/d:DeliveryDate"
+  base_hour_path: "d:DocBody/d:DeliveryHour"
+  hour_base: 1
+  records_path: "d:DocBody/d:ZonalPrice"
+  interval_path: "d:Interval"
+  interval_minutes: 5
+  interval_base: 1
+  unit: CAD_per_MWh
+  currency: CAD
+  value_paths:
+    ontario_zonal_price: "d:LmpCap"
+    ontario_zonal_congestion: "d:CongPriceCap"
+    ontario_zonal_loss: "d:LossPriceCap"
+
+backfill:
+  index_url: https://reports-public.ieso.ca/public/RealtimeOntarioZonalPrice/
+  pattern: 'PUB_RealtimeOntarioZonalPrice_(\d{10})(?:_v(\d+))?\.xml'
+  max_files: 72
+
+detectors:
+  # Calibrated 2026-08-18 against 709 real five-minute prices (59 hours). Ontario
+  # five-minute prices are far more volatile than they look: the MEDIAN 15-minute
+  # move is 12.6% and the 90th percentile is 54.6%, so the obvious-looking 30%
+  # threshold fired 67 times a day, which is a firehose rather than a signal.
+  # Thresholds below target roughly two to three fires a day each.
+  #   z-score    3.0 -> 8.9/day   4.0 -> 2.8/day   5.0 -> 0.4/day
+  #   15-min move 60% -> 25.2/day 100% -> 7.3/day  200% -> 2.8/day
+  - type: zscore
+    series: ontario_zonal_price
+    window: 288
+    min_periods: 36
+    threshold: 4.0
+    label: Ontario electricity price
+  - type: pct_change
+    series: ontario_zonal_price
+    periods: 3
+    threshold_pct: 200
+    label: Ontario electricity price
+  - type: level_threshold
+    series: ontario_zonal_congestion
+    above: 0.01
+    below: -0.01
+    confidence: 0.65
+    label: Ontario transmission congestion price
+  - type: isolation_forest
+    series: ontario_zonal_price
+    window: 288
+    min_periods: 60
+    contamination: 0.02
+    label: Ontario electricity price

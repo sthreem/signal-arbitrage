@@ -1,0 +1,54 @@
+source_id: on_ieso_demand_forecast_ahead
+name: Ontario demand forecast, hourly, one day ahead
+region_code: "on"
+data_type: timeseries_numeric
+adapter: xml_feed
+update_frequency: 1h
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: limited, non-exclusive, non-sublicensable,
+  non-transferrable licence with a mandatory attribution string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-19, same host and terms as on_ieso_zonal_price. Fetching
+  permitted, redistribution unresolved.
+signal_potential: >-
+  The same adequacy report as on_ieso_demand_forecast, one delivery day further
+  out, kept as its own source because a forecast issued 24 to 36 hours ahead is a
+  materially different claim from one issued the same morning and its error has
+  to be measured separately. This is the horizon a curtailment decision is
+  actually taken at.
+
+request:
+  # Tomorrow's file. The sibling source covers today; this one exists because a
+  # curtailment cannot be arranged in the same hour it is called, so the useful
+  # warning is the evening before. IESO publishes the adequacy report about a
+  # month ahead and revises it, so this file already exists and improves all day.
+  url: https://reports-public.ieso.ca/public/Adequacy3/PUB_Adequacy3_{date+1d:%Y%m%d}.xml
+  method: GET
+  date_timezone: EST
+
+parse:
+  mode: timeseries
+  timezone: EST
+  base_date_path: "d:DocBody/d:DeliveryDate"
+  records_path: ".//d:ForecastOntDemand/d:Demand"
+  hour_path: "d:DeliveryHour"
+  hour_base: 1
+  value_path: "d:EnergyMW"
+  series_literal: forecast_ontario_demand
+  lead_time_path: "d:DocHeader/d:CreatedAt"
+  # Horizon bands, in hours ahead of the delivery hour. The long bands are split
+  # because the adequacy report is published about a month out and revised the
+  # whole way in, so a single "48 hours or more" bucket would average a two day
+  # forecast together with a five week one and call the result an error rate.
+  lead_time_buckets: [0, 3, 6, 12, 24, 48, 120, 336]
+  unit: MW
+
+# No backfill block, deliberately. This source reads the same archive as
+# on_ieso_demand_forecast, so backfilling both would fetch every file twice.
+# The sibling holds the history; the peak model reads both together.
+
+# No detectors, for the same reason as the sibling source.
+detectors: []

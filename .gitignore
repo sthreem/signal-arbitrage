@@ -1,0 +1,29 @@
+# environment
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# OS
+.DS_Store
+
+# generated stores: rebuildable from raw payloads
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.parquet
+
+# raw payload blobs: large and binary, kept locally as source of truth
+data/raw/
+
+# local secrets fallback (Keychain is the real store)
+.env
+
+# Large derived export: 271k rows, regenerable with 'signal export'
+
+# runtime logs and scheduler markers: local state, not project record
+data/logs/
+
+# Generated output, rebuilt by `signal export` and `signal pull`
+exports/

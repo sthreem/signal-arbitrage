@@ -1,0 +1,47 @@
+source_id: ca_boc_fx_usdcad
+name: Bank of Canada USD/CAD daily average rate
+region_code: "ca"
+data_type: timeseries_numeric
+adapter: json_api
+update_frequency: 6h
+scheduled_release: true
+
+licence: >-
+  Bank of Canada Terms of Use. Commercial reuse permitted with attribution and
+  accuracy diligence. Clause 1.3 requires that any paid product tell purchasers,
+  before sale, that the content came from the Bank's website and is available
+  there free of charge.
+licence_scope: attribution_required
+terms_check: >-
+  Verified 2026-08-18. robots.txt disallows only /wp-admin/ and places no
+  restriction on /valet/. This is a documented, unauthenticated public REST API.
+  Clean to fetch and clean to resell, provided the clause 1.3 notice is carried.
+signal_potential: >-
+  Split verdict, and the honest half matters. The underlying rate moves
+  unpredictably, so anomalies mean something. But Valet publishes a once-daily
+  average, so there is zero latency edge against any live quote and the average
+  smooths the intraday move away. Its role here is a clean, licence-safe daily
+  baseline and a cross-check, never breaking news.
+
+request:
+  url: https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json
+  method: GET
+  params:
+    recent: 200
+
+parse:
+  mode: timeseries
+  records: "observations"
+  time_field: "d"
+  currency: CAD
+  unit: rate
+  value_fields:
+    usdcad: "FXUSDCAD.v"
+
+detectors:
+  - type: zscore
+    series: usdcad
+    window: 60
+    min_periods: 20
+    threshold: 3.0
+    label: USD/CAD daily average

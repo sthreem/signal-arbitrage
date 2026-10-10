@@ -1,0 +1,69 @@
+source_id: on_ieso_realtime_totals
+name: Ontario demand and operating reserve, real time
+region_code: "on"
+data_type: timeseries_numeric
+adapter: csv_feed
+update_frequency: 5m
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: limited, non-exclusive, non-sublicensable,
+  non-transferrable licence with a mandatory attribution string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-18, same host and terms as on_ieso_zonal_price. Fetching
+  permitted, redistribution unresolved.
+signal_potential: >-
+  Operating reserve is the scarcity tell and it leads price spikes. The 10S, 10N
+  and 30R columns are ten-minute spinning, ten-minute non-spinning and
+  thirty-minute running reserve. Publishes on the same five-minute tick as the
+  zonal price, so the two join interval for interval.
+
+request:
+  url: https://reports-public.ieso.ca/public/RealtimeTotals/PUB_RealtimeTotals.csv
+  method: GET
+
+parse:
+  mode: timeseries
+  timezone: EST
+  skip_rows: 4
+  date_from_preamble: "FOR (\\d{4}/\\d{2}/\\d{2})"
+  hour_column: HOUR
+  interval_column: INTERVAL
+  hour_base: 1
+  interval_base: 1
+  interval_minutes: 5
+  unit: MW
+  value_columns:
+    ontario_total_load: "TOTAL LOAD"
+    ontario_total_energy: "TOTAL ENERGY"
+    ontario_reserve_10s: "TOTAL 10S"
+    ontario_reserve_10n: "TOTAL 10N"
+    ontario_reserve_30r: "TOTAL 30R"
+
+backfill:
+  index_url: https://reports-public.ieso.ca/public/RealtimeTotals/
+  pattern: 'PUB_RealtimeTotals_(\d{10})(?:_v(\d+))?\.csv'
+  max_files: 72
+
+detectors:
+  # Calibrated 2026-08-18 alongside the price feed. Thresholds raised from 3.0 to
+  # 4.0 sigma after an unscoped pass fired about six times a day on demand and
+  # reserve, most of which was the normal evening ramp rather than scarcity.
+  - type: zscore
+    series: ontario_total_load
+    window: 288
+    min_periods: 36
+    threshold: 4.0
+    label: Ontario electricity demand
+  - type: zscore
+    series: ontario_reserve_10s
+    window: 288
+    min_periods: 36
+    threshold: 4.0
+    label: Ontario ten-minute spinning reserve
+  - type: pct_change
+    series: ontario_reserve_10s
+    periods: 3
+    threshold_pct: 60
+    label: Ontario ten-minute spinning reserve

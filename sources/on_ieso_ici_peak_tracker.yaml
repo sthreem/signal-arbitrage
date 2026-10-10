@@ -1,0 +1,50 @@
+source_id: on_ieso_ici_peak_tracker
+name: Ontario ICI peak tracker, running top demand hours
+region_code: "on"
+data_type: timeseries_numeric
+adapter: xml_feed
+update_frequency: 1h
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: limited, non-exclusive, non-sublicensable,
+  non-transferrable licence with a mandatory attribution string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-19, same host and terms as on_ieso_zonal_price. Fetching
+  permitted, redistribution unresolved. The probability the peak line computes is
+  the engine's own, but the report around it prints this source's values
+  verbatim, so a subscriber-facing version still waits on the same answer.
+signal_potential: >-
+  The five highest Ontario demand hours of the May to April base period, updated
+  live. Under the Industrial Conservation Initiative a Class A consumer's Global
+  Adjustment charge for the following year is set by their own demand during
+  exactly these hours, so the fifth-place value is the threshold every
+  curtailment decision in the province is measured against. The number itself is
+  published and carries no timing edge. The edge is in what it is compared
+  against: pair it with the demand forecast and the useful quantity is the
+  probability that a coming hour displaces it. See sigarb/peak.py.
+
+request:
+  url: https://reports-public.ieso.ca/public/ICIPeakTracker/PUB_ICIPeakTracker.xml
+  method: GET
+  date_timezone: EST
+
+parse:
+  mode: timeseries
+  timezone: EST
+  # Six datasets share this file. Only the demand one is the ICI threshold; the
+  # AQEW datasets are a different measurement basis and must not be blended in.
+  records_path: ".//d:dataset[@datapointName='TOP_ONTARIO_DEMAND']/d:datapoint"
+  date_path: "d:datetimeInfo/d:deliveryDate"
+  hour_path: "d:datetimeInfo/d:deliveryHour"
+  hour_base: 1
+  value_path: "d:value"
+  series_literal: top_ontario_demand
+  unit: MW
+
+# No detectors, deliberately. An hour entering the top five is a real event with
+# real money attached, but by the time it appears here it has already happened
+# and the consumer has already been measured. There is nothing to be early
+# about. The forward-looking half of this lives in `signal peak`.
+detectors: []

@@ -1,0 +1,59 @@
+source_id: on_ieso_generator_output
+name: Ontario generator output by unit, hourly
+region_code: "on"
+data_type: timeseries_numeric
+adapter: xml_feed
+update_frequency: 1h
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: limited, non-exclusive, non-sublicensable,
+  non-transferrable licence with a mandatory attribution string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-18, same host and terms as on_ieso_zonal_price. Fetching
+  permitted, redistribution unresolved.
+signal_potential: >-
+  Per-unit hourly megawatts for all 188 registered Ontario generators. An
+  unplanned nuclear or gas unit trip appears here as one named unit's output
+  collapsing between consecutive hourly versions, ahead of any narrative
+  publication. Calibration warning: peaking units legitimately swing their full
+  range every day, so per-unit thresholds need tuning before these alerts are
+  worth reading. Treat the current settings as a starting point, not a
+  calibrated detector.
+
+request:
+  url: https://reports-public.ieso.ca/public/GenOutputCapability/PUB_GenOutputCapability.xml
+  method: GET
+
+parse:
+  mode: timeseries_nested
+  timezone: EST
+  base_date_path: "d:IMODocBody/d:Date"
+  group_path: ".//d:Generator"
+  group_series_path: "d:GeneratorName"
+  group_label_paths: ["d:FuelType"]
+  records_path: "d:Outputs/d:Output"
+  hour_path: "d:Hour"
+  hour_base: 1
+  value_path: "d:EnergyMW"
+  unit: MW
+
+backfill:
+  index_url: https://reports-public.ieso.ca/public/GenOutputCapability/
+  pattern: 'PUB_GenOutputCapability_(\d{8})(?:_v(\d+))?\.xml'
+  max_files: 10
+
+detectors:
+  # Scoped to nuclear on purpose. Calibrated 2026-08-18 against 60 days of real
+  # history: an unscoped z-score fired 1799 times, 827 of them on gas peakers and
+  # 421 on wind, both of which legitimately swing their full range every day. That
+  # is dispatch, not news. Nuclear runs flat at capacity, so a sustained drop is an
+  # unplanned outage, and Ontario nuclear carries roughly half the province's
+  # supply. Direction is down-only: a unit coming back online is not an event.
+  - type: zscore
+    series_pattern: '\|NUCLEAR$'
+    direction: down
+    window: 168
+    min_periods: 48
+    threshold: 5.0

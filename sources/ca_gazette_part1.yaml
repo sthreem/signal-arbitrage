@@ -1,0 +1,39 @@
+source_id: ca_gazette_part1
+name: Canada Gazette Part I, proposed regulations
+region_code: "ca"
+data_type: event_text
+adapter: rss
+update_frequency: 12h
+scheduled_release: true
+
+licence: >-
+  Not verified. Government of Canada content is Crown copyright and the
+  canonical terms page was unreachable to automated access when checked.
+  Confirm the commercial-reproduction position before relying on this
+  commercially.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-18. gazette.gc.ca publishes no robots.txt, and the feed is an
+  advertised RSS product, which is a clear invitation to programmatic access.
+  Fetching is fine; commercial reproduction is unconfirmed.
+signal_potential: >-
+  No latency edge and, as ingested, no keyword resolution either. Part I
+  publishes every Saturday on a calendar knowable months ahead, and the RSS
+  entries are whole issues rather than individual notices. Held as background
+  context only; it emits no signals. Resolving individual notices would need a
+  second fetch of each issue index page, which is not built.
+
+request:
+  url: https://www.gazette.gc.ca/rss/p1-eng.xml
+  method: GET
+
+parse:
+  max_entries: 500
+
+# No detectors, deliberately. Verified 2026-08-18: the feed's entries are whole
+# ISSUES ("Canada Gazette - Part I, August 15, 2026, volume 160, number 33"),
+# not individual notices, so keyword matching against a title can never work and
+# reading the contents needs a second fetch of the linked index page. The events
+# are kept as context, but a weekly "the Gazette published" alert is exactly the
+# scheduled-release noise this engine exists to avoid emitting.
+detectors: []

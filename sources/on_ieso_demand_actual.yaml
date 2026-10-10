@@ -1,0 +1,43 @@
+source_id: on_ieso_demand_actual
+name: Ontario demand, actual, hourly for the year
+region_code: "on"
+data_type: timeseries_numeric
+adapter: csv_feed
+update_frequency: 1h
+scheduled_release: false
+
+licence: >-
+  IESO Terms of Use: limited, non-exclusive, non-sublicensable,
+  non-transferrable licence with a mandatory attribution string.
+licence_scope: unknown
+terms_check: >-
+  Verified 2026-08-19, same host and terms as on_ieso_zonal_price. Fetching
+  permitted, redistribution unresolved.
+signal_potential: >-
+  No timing edge whatsoever, and none is wanted. This is the ground truth the
+  rest of the peak line is graded against: the same Ontario Demand series, on
+  the same hourly basis, that the Industrial Conservation Initiative measures a
+  Class A consumer's peak contribution on. It supplies the actual half of every
+  forecast error pair and settles whether a peak call was right. One file holds
+  the whole calendar year, so a full history arrives on the first fetch.
+
+request:
+  url: https://reports-public.ieso.ca/public/Demand/PUB_Demand_{date:%Y}.csv
+  method: GET
+  date_timezone: EST
+
+parse:
+  mode: timeseries
+  timezone: EST
+  skip_rows: 3
+  date_column: "Date"
+  hour_column: "Hour"
+  hour_base: 1
+  value_columns:
+    ontario_demand: "Ontario Demand"
+    market_demand: "Market Demand"
+  unit: MW
+
+# No detectors. Demand rising on a hot afternoon is weather, not news. What
+# matters is demand relative to the ICI threshold, which is `signal peak`.
+detectors: []
